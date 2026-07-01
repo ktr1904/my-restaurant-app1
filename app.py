@@ -3,11 +3,20 @@ from PIL import Image
 import pandas as pd
 import datetime
 import os
+import random
 
 st.set_page_config(page_title="Mobile Restaurant App", page_icon="🍔", layout="centered")
 
 HISTORY_FILE = "sales_history.csv"
-ADMIN_PASSWORD = "admin123"  # <--- உங்களது பாஸ்வேர்ட் இங்கே மாற்றிக்கொள்ளலாம்
+ADMIN_PASSWORD = "admin123"  # உங்களது பாஸ்வேர்ட் 
+
+# Initialize Session State for Restaurant Details
+if 'restaurant_name' not in st.session_state:
+    st.session_state.restaurant_name = "⭐ அருசுவை உணவகம்"
+if 'restaurant_address' not in st.session_state:
+    st.session_state.restaurant_address = "12, மெயின் ரோடு, சென்னை - 600001"
+if 'restaurant_phone' not in st.session_state:
+    st.session_state.restaurant_phone = "9876543210"
 
 # Initialize Session State for Menu Data
 if 'menu_data' not in st.session_state:
@@ -23,15 +32,28 @@ tab1, tab2 = st.tabs(["🍽️ இன்றைய ஆர்டர் (Billing)",
 
 # --- ADMIN SIDEBAR EDITOR (With Password Lock) ---
 st.sidebar.markdown("<h2 style='color: #E67E22;'>🛠️ மேலாளர் பகுதி (Admin)</h2>", unsafe_allow_html=True)
-
-# Password Verification
 admin_password_input = st.sidebar.text_input("மேலாளர் கடவுச்சொல் (Password):", type="password")
 
 if admin_password_input == ADMIN_PASSWORD:
     st.sidebar.success("🔓 அனுமதி வழங்கப்பட்டது!")
-    admin_action = st.sidebar.radio("என்ன செய்ய வேண்டும்?", ["விலை/படம் மாற்று", "புதிய உணவு சேர் (Add)", "உணவை நீக்கு (Remove)"])
+    
+    admin_action = st.sidebar.radio("என்ன செய்ய வேண்டும்?", [
+        "கடை விபரங்களை மாற்று", 
+        "உணவு விலை/படம் மாற்று", 
+        "புதிய உணவு சேர் (Add)", 
+        "உணவை நீக்கு (Remove)"
+    ])
 
-    if admin_action == "விலை/படம் மாற்று":
+    # 1. Edit Restaurant Info
+    if admin_action == "கடை விபரங்களை மாற்று":
+        st.sidebar.write("### 🏢 உணவக விபரங்கள்:")
+        st.session_state.restaurant_name = st.sidebar.text_input("உணவகப் பெயர்:", value=st.session_state.restaurant_name)
+        st.session_state.restaurant_address = st.sidebar.text_area("முகவரி (Address):", value=st.session_state.restaurant_address)
+        st.session_state.restaurant_phone = st.sidebar.text_input("தொலைபேசி எண்:", value=st.session_state.restaurant_phone)
+        st.sidebar.success("கடை விபரங்கள் புதுப்பிக்கப்பட்டன!")
+
+    # 2. Edit Menu Item
+    elif admin_action == "உணவு விலை/படம் மாற்று":
         if st.session_state.menu_data:
             selected_edit_id = st.sidebar.selectbox(
                 "உணவை தேர்வு செய்யவும்:", 
@@ -48,9 +70,8 @@ if admin_password_input == ADMIN_PASSWORD:
             if uploaded_file is not None:
                 st.session_state.menu_data[selected_edit_id]['image'] = Image.open(uploaded_file)
                 st.sidebar.success("புகைப்படம் மாற்றப்பட்டது!")
-        else:
-            st.sidebar.info("பட்டியல் காலியாக உள்ளது.")
 
+    # 3. Add Item
     elif admin_action == "புதிய உணவு சேர் (Add)":
         st.sidebar.write("### ➕ புதிய உணவு விவரம்:")
         new_item_name = st.sidebar.text_input("உணவின் பெயர் (Item Name):")
@@ -69,36 +90,33 @@ if admin_password_input == ADMIN_PASSWORD:
                 }
                 st.sidebar.success(f"🎉 {new_item_name} வெற்றிகரமாக சேர்க்கப்பட்டது!")
                 st.rerun()
-            else:
-                st.sidebar.error("தயவுசெய்து உணவின் பெயரை டைப் செய்யவும்!")
 
+    # 4. Remove Item
     elif admin_action == "உணவை நீக்கு (Remove)":
-        st.sidebar.write("### ❌ உணவை நீக்குதல்:")
         if st.session_state.menu_data:
             selected_delete_id = st.sidebar.selectbox(
                 "நீக்க வேண்டிய உணவு:", 
                 list(st.session_state.menu_data.keys()), 
-                format_func=lambda x: st.session_state.menu_data[x]["item"],
-                key="delete_box"
+                format_func=lambda x: st.session_state.menu_data[x]["item"]
             )
             item_to_remove = st.session_state.menu_data[selected_delete_id]['item']
-            
             if st.sidebar.button(f"🗑️ {item_to_remove}-ஐ நீக்கு", type="primary"):
                 del st.session_state.menu_data[selected_delete_id]
-                st.sidebar.success(f"🗑️ {item_to_remove} பட்டியலிலிருந்து நீக்கப்பட்டது!")
+                st.sidebar.success(f"🗑️ {item_to_remove} நீக்கப்பட்டது!")
                 st.rerun()
-        else:
-            st.sidebar.info("நீக்குவதற்கு உணவுகள் எதுவும் இல்லை.")
 else:
     if admin_password_input != "":
-        st.sidebar.error("🔒 தவறான கடவுச்சொல்! அனுமதி மறுக்கப்பட்டது.")
+        st.sidebar.error("🔒 தவறான கடவுச்சொல்!")
     else:
-        st.sidebar.info("🔑 மெனுவை மாற்ற மேலாளர் கடவுச்சொல்லை உள்ளிடவும்.")
+        st.sidebar.info("🔑 மேலாளர் பகுதிக்கு கடவுச்சொல்லை உள்ளிடவும்.")
 
 
-# --- TAB 1: ORDERING SCREEN (Workers can use this freely) ---
+# --- TAB 1: ORDERING & BILLING SCREEN ---
 with tab1:
-    st.markdown("<h1 style='text-align: center; color: #2E4053;'>📱 உணவகப் பட்டியல் & பில்</h1>", unsafe_allow_html=True)
+    st.markdown(f"<h1 style='text-align: center; color: #2E4053;'>📱 {st.session_state.restaurant_name}</h1>", unsafe_allow_html=True)
+    st.markdown(f"<p style='text-align: center; font-size: 10pt; color: #7F8C8D;'>{st.session_state.restaurant_address} | 📞 {st.session_state.restaurant_phone}</p>", unsafe_allow_html=True)
+    st.write("---")
+    
     st.write("### 🍽️ இன்றைய உணவுப் பட்டியல்")
     order_cart = {}
 
@@ -118,12 +136,22 @@ with tab1:
                     if qty > 0:
                         order_cart[code] = qty
             st.markdown("---")
-    else:
-        st.warning("⚠️ உணவுப் பட்டியல் காலியாக உள்ளது! Admin பகுதியில் உணவுகளை சேர்க்கவும்.")
 
-    # Billing System
+    # Generate Bill Layout
     if order_cart:
-        st.write("### 🧾 உங்களுடைய பில் விபரம்")
+        # Generate temporary Bill ID and Date
+        bill_id = random.randint(1000, 9999)
+        current_time = datetime.datetime.now().strftime("%d-%m-%Y %H:%M")
+        
+        # Receipt UI Block
+        st.markdown("<div style='border: 2px dashed #BDC3C7; padding: 15px; border-radius: 5px; background-color: #FAFAFA;'>", unsafe_allow_html=True)
+        st.markdown(f"<h3 style='text-align: center; margin: 0;'>{st.session_state.restaurant_name}</h3>", unsafe_allow_html=True)
+        st.markdown(f"<p style='text-align: center; font-size: 9pt; margin: 2px;'>{st.session_state.restaurant_address}</p>", unsafe_allow_html=True)
+        st.markdown(f"<p style='text-align: center; font-size: 9pt; margin: 2px;'>📞 Cell: {st.session_state.restaurant_phone}</p>", unsafe_allow_html=True)
+        st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
+        
+        st.markdown(f"<p style='font-size: 10pt;'><b>பில் எண்:</b> #{bill_id} <span style='float: right;'><b>தேதி:</b> {current_time}</span></p>", unsafe_allow_html=True)
+        
         bill_items = []
         grand_total = 0.0
         
@@ -137,14 +165,18 @@ with tab1:
         df = pd.DataFrame(bill_items)
         st.table(df)
         
-        st.markdown(f"<h3 style='text-align: right; color: #27AE60;'>மொத்த தொகை: ரூ. {grand_total}</h3>", unsafe_allow_html=True)
+        st.markdown(f"<h3 style='text-align: right; color: #27AE60; margin-top: 5px;'>மொத்த தொகை: ரூ. {grand_total}</h3>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; font-size: 10pt; font-style: italic;'>மீண்டும் வருக! Thank you!</p>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+        st.write("")
         
         if st.button("பில் செய்ய உறுதிசெய்", type="primary"):
-            now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            now_save = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             new_history_data = []
             for code, qty in order_cart.items():
                 new_history_data.append({
-                    "தேதி / நேரம்": now,
+                    "பில் எண்": f"#{bill_id}",
+                    "தேதி / நேரம்": now_save,
                     "உணவு": st.session_state.menu_data[code]["item"],
                     "அளவு": qty,
                     "விலை": st.session_state.menu_data[code]["price"],
@@ -160,12 +192,12 @@ with tab1:
                 new_df.to_csv(HISTORY_FILE, index=False)
                 
             st.balloons()
-            st.success("🎉 பில் வெற்றிகரமாக உருவாக்கப்பட்டு, வரலாற்றில் சேமிக்கப்பட்டது!")
+            st.success("🎉 பில் வரலாற்றில் வெற்றிகரமாகச் சேமிக்கப்பட்டது!")
     else:
         st.info("💡 ஆர்டர் செய்ய உணவின் அளவை (Quantity) உள்ளிடவும்.")
 
 
-# --- TAB 2: SALES HISTORY (With Password Protection) ---
+# --- TAB 2: SALES HISTORY (Admin Only) ---
 with tab2:
     st.write("### 📊 மொத்த விற்பனை வரலாறு (Total Sales History)")
     
@@ -183,4 +215,4 @@ with tab2:
         else:
             st.info("📂 இதுவரை எந்த விற்பனை வரலாறும் இல்லை.")
     else:
-        st.warning("🔒 இந்த விபரங்களை பார்க்க உங்களுக்கு அனுமதி இல்லை! தயவுசெய்து இடதுபுறம் (Sidebar) சரியான மேலாளர் கடவுச்சொல்லை உள்ளிடவும்.")
+        st.warning("🔒 இந்த விபரங்களை பார்க்க உங்களுக்கு அனுமதி இல்லை! மேலாளர் கடவுச்சொல்லை உள்ளிடவும்.")
