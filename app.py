@@ -67,5 +67,5 @@ def generate_bill():
     print("Thank you! Visit Again.")
 
 # Run the software
-if _name_ == "_main_":
+if__name__ == "__main__":
     generate_bill()
