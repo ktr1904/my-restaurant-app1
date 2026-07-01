@@ -7,8 +7,9 @@ import os
 st.set_page_config(page_title="Mobile Restaurant App", page_icon="🍔", layout="centered")
 
 HISTORY_FILE = "sales_history.csv"
+ADMIN_PASSWORD = "admin123"  # <--- உங்களது பாஸ்வேர்ட் இங்கே மாற்றிக்கொள்ளலாம்
 
-# 1. Load / Initialize Menu Data permanently using Session State
+# Initialize Session State for Menu Data
 if 'menu_data' not in st.session_state:
     st.session_state.menu_data = {
         1: {"item": "Plain Dosa", "price": 50.0, "image": None},
@@ -18,76 +19,84 @@ if 'menu_data' not in st.session_state:
     }
 
 # Tab Layout Separation
-tab1, tab2 = st.tabs(["🍽️ இன்றைய ஆர்டர்", "📊 விற்பனை வரலாறு (History)"])
+tab1, tab2 = st.tabs(["🍽️ இன்றைய ஆர்டர் (Billing)", "📊 விற்பனை வரலாறு (Admin Only)"])
 
-# --- ADMIN SIDEBAR EDITOR ---
+# --- ADMIN SIDEBAR EDITOR (With Password Lock) ---
 st.sidebar.markdown("<h2 style='color: #E67E22;'>🛠️ மேலாளர் பகுதி (Admin)</h2>", unsafe_allow_html=True)
 
-# Admin Sub-Options: Edit, Add, or Remove
-admin_action = st.sidebar.radio("என்ன செய்ய வேண்டும்?", ["விலை/படம் மாற்று", "புதிய உணவு சேர் (Add)", "உணவை நீக்கு (Remove)"])
+# Password Verification
+admin_password_input = st.sidebar.text_input("மேலாளர் கடவுச்சொல் (Password):", type="password")
 
-if admin_action == "விலை/படம் மாற்று":
-    if st.session_state.menu_data:
-        selected_edit_id = st.sidebar.selectbox(
-            "உணவை தேர்வு செய்யவும்:", 
-            list(st.session_state.menu_data.keys()), 
-            format_func=lambda x: st.session_state.menu_data[x]["item"]
-        )
-        new_price = st.sidebar.number_input(
-            f"{st.session_state.menu_data[selected_edit_id]['item']} புதிய விலை:", 
-            min_value=0.0, value=float(st.session_state.menu_data[selected_edit_id]['price']), step=5.0
-        )
-        st.session_state.menu_data[selected_edit_id]['price'] = new_price
+if admin_password_input == ADMIN_PASSWORD:
+    st.sidebar.success("🔓 அனுமதி வழங்கப்பட்டது!")
+    admin_action = st.sidebar.radio("என்ன செய்ய வேண்டும்?", ["விலை/படம் மாற்று", "புதிய உணவு சேர் (Add)", "உணவை நீக்கு (Remove)"])
 
-        uploaded_file = st.sidebar.file_uploader("புகைப்படம் பதிவேற்றவும்:", type=["jpg", "jpeg", "png"])
-        if uploaded_file is not None:
-            st.session_state.menu_data[selected_edit_id]['image'] = Image.open(uploaded_file)
-            st.sidebar.success("புகைப்படம் மாற்றப்பட்டது!")
-    else:
-        st.sidebar.info("பட்டியல் காலியாக உள்ளது.")
+    if admin_action == "விலை/படம் மாற்று":
+        if st.session_state.menu_data:
+            selected_edit_id = st.sidebar.selectbox(
+                "உணவை தேர்வு செய்யவும்:", 
+                list(st.session_state.menu_data.keys()), 
+                format_func=lambda x: st.session_state.menu_data[x]["item"]
+            )
+            new_price = st.sidebar.number_input(
+                f"{st.session_state.menu_data[selected_edit_id]['item']} புதிய விலை:", 
+                min_value=0.0, value=float(st.session_state.menu_data[selected_edit_id]['price']), step=5.0
+            )
+            st.session_state.menu_data[selected_edit_id]['price'] = new_price
 
-elif admin_action == "புதிய உணவு சேர் (Add)":
-    st.sidebar.write("### ➕ புதிய உணவு விவரம்:")
-    new_item_name = st.sidebar.text_input("உணவின் பெயர் (Item Name):")
-    new_item_price = st.sidebar.number_input("விலை (Price):", min_value=0.0, step=5.0)
-    new_item_file = st.sidebar.file_uploader("உணவு புகைப்படம் (Optional):", type=["jpg", "jpeg", "png"], key="add_img")
-    
-    if st.sidebar.button("பட்டியலில் சேர் (Add Item)"):
-        if new_item_name:
-            # Generate a new unique ID
-            new_id = max(st.session_state.menu_data.keys()) + 1 if st.session_state.menu_data else 1
-            new_img = Image.open(new_item_file) if new_item_file is not None else None
-            
-            st.session_state.menu_data[new_id] = {
-                "item": new_item_name,
-                "price": new_item_price,
-                "image": new_img
-            }
-            st.sidebar.success(f"🎉 {new_item_name} வெற்றிகரமாக சேர்க்கப்பட்டது!")
-            st.rerun()
+            uploaded_file = st.sidebar.file_uploader("புகைப்படம் பதிவேற்றவும்:", type=["jpg", "jpeg", "png"])
+            if uploaded_file is not None:
+                st.session_state.menu_data[selected_edit_id]['image'] = Image.open(uploaded_file)
+                st.sidebar.success("புகைப்படம் மாற்றப்பட்டது!")
         else:
-            st.sidebar.error("தயவுசெய்து உணவின் பெயரை டைப் செய்யவும்!")
+            st.sidebar.info("பட்டியல் காலியாக உள்ளது.")
 
-elif admin_action == "உணவை நீக்கு (Remove)":
-    st.sidebar.write("### ❌ உணவை நீக்குதல்:")
-    if st.session_state.menu_data:
-        selected_delete_id = st.sidebar.selectbox(
-            "நீக்க வேண்டிய உணவு:", 
-            list(st.session_state.menu_data.keys()), 
-            format_func=lambda x: st.session_state.menu_data[x]["item"],
-            key="delete_box"
-        )
-        item_to_remove = st.session_state.menu_data[selected_delete_id]['item']
+    elif admin_action == "புதிய உணவு சேர் (Add)":
+        st.sidebar.write("### ➕ புதிய உணவு விவரம்:")
+        new_item_name = st.sidebar.text_input("உணவின் பெயர் (Item Name):")
+        new_item_price = st.sidebar.number_input("விலை (Price):", min_value=0.0, step=5.0)
+        new_item_file = st.sidebar.file_uploader("உணவு புகைப்படம் (Optional):", type=["jpg", "jpeg", "png"], key="add_img")
         
-        if st.sidebar.button(f"🗑️ {item_to_remove}-ஐ நீக்கு", type="primary"):
-            del st.session_state.menu_data[selected_delete_id]
-            st.sidebar.success(f"🗑️ {item_to_remove} பட்டியலிலிருந்து நீக்கப்பட்டது!")
-            st.rerun()
+        if st.sidebar.button("பட்டியலில் சேர் (Add Item)"):
+            if new_item_name:
+                new_id = max(st.session_state.menu_data.keys()) + 1 if st.session_state.menu_data else 1
+                new_img = Image.open(new_item_file) if new_item_file is not None else None
+                
+                st.session_state.menu_data[new_id] = {
+                    "item": new_item_name,
+                    "price": new_item_price,
+                    "image": new_img
+                }
+                st.sidebar.success(f"🎉 {new_item_name} வெற்றிகரமாக சேர்க்கப்பட்டது!")
+                st.rerun()
+            else:
+                st.sidebar.error("தயவுசெய்து உணவின் பெயரை டைப் செய்யவும்!")
+
+    elif admin_action == "உணவை நீக்கு (Remove)":
+        st.sidebar.write("### ❌ உணவை நீக்குதல்:")
+        if st.session_state.menu_data:
+            selected_delete_id = st.sidebar.selectbox(
+                "நீக்க வேண்டிய உணவு:", 
+                list(st.session_state.menu_data.keys()), 
+                format_func=lambda x: st.session_state.menu_data[x]["item"],
+                key="delete_box"
+            )
+            item_to_remove = st.session_state.menu_data[selected_delete_id]['item']
+            
+            if st.sidebar.button(f"🗑️ {item_to_remove}-ஐ நீக்கு", type="primary"):
+                del st.session_state.menu_data[selected_delete_id]
+                st.sidebar.success(f"🗑️ {item_to_remove} பட்டியலிலிருந்து நீக்கப்பட்டது!")
+                st.rerun()
+        else:
+            st.sidebar.info("நீக்குவதற்கு உணவுகள் எதுவும் இல்லை.")
+else:
+    if admin_password_input != "":
+        st.sidebar.error("🔒 தவறான கடவுச்சொல்! அனுமதி மறுக்கப்பட்டது.")
     else:
-        st.sidebar.info("நீக்குவதற்கு உணவுகள் எதுவும் இல்லை.")
+        st.sidebar.info("🔑 மெனுவை மாற்ற மேலாளர் கடவுச்சொல்லை உள்ளிடவும்.")
 
 
-# --- TAB 1: ORDERING SCREEN ---
+# --- TAB 1: ORDERING SCREEN (Workers can use this freely) ---
 with tab1:
     st.markdown("<h1 style='text-align: center; color: #2E4053;'>📱 உணவகப் பட்டியல் & பில்</h1>", unsafe_allow_html=True)
     st.write("### 🍽️ இன்றைய உணவுப் பட்டியல்")
@@ -156,18 +165,22 @@ with tab1:
         st.info("💡 ஆர்டர் செய்ய உணவின் அளவை (Quantity) உள்ளிடவும்.")
 
 
-# --- TAB 2: SALES HISTORY ---
+# --- TAB 2: SALES HISTORY (With Password Protection) ---
 with tab2:
     st.write("### 📊 மொத்த விற்பனை வரலாறு (Total Sales History)")
-    if os.path.exists(HISTORY_FILE):
-        history_df = pd.read_csv(HISTORY_FILE)
-        st.dataframe(history_df, use_container_width=True)
-        
-        total_sales = history_df["மொத்த தொகை"].sum()
-        st.markdown(f"<h2 style='text-align: center; color: #E74C3C;'>இதுவரையிலான மொத்த விற்பனை: ரூ. {total_sales}</h2>", unsafe_allow_html=True)
-        
-        if st.button("வரலாற்றை அழிக்கவும் (Clear History)"):
-            os.remove(HISTORY_FILE)
-            st.rerun()
+    
+    if admin_password_input == ADMIN_PASSWORD:
+        if os.path.exists(HISTORY_FILE):
+            history_df = pd.read_csv(HISTORY_FILE)
+            st.dataframe(history_df, use_container_width=True)
+            
+            total_sales = history_df["மொத்த தொகை"].sum()
+            st.markdown(f"<h2 style='text-align: center; color: #E74C3C;'>இதுவரையிலான மொத்த விற்பனை: ரூ. {total_sales}</h2>", unsafe_allow_html=True)
+            
+            if st.button("வரலாற்றை அழிக்கவும் (Clear History)"):
+                os.remove(HISTORY_FILE)
+                st.rerun()
+        else:
+            st.info("📂 இதுவரை எந்த விற்பனை வரலாறும் இல்லை.")
     else:
-        st.info("📂 இதுவரை எந்த விற்பனை வரலாறும் இல்லை.")
+        st.warning("🔒 இந்த விபரங்களை பார்க்க உங்களுக்கு அனுமதி இல்லை! தயவுசெய்து இடதுபுறம் (Sidebar) சரியான மேலாளர் கடவுச்சொல்லை உள்ளிடவும்.")
